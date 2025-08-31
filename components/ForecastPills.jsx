@@ -1,8 +1,24 @@
 import React from "react";
-import { View, Text, Image, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import GlassCard from "./GlassCard";
 
 export default function ForecastPills({ items = [] }) {
+  // Weather emoji mapping
+  const getWeatherEmoji = (iconCode) => {
+    const emojiMap = {
+      '01d': '☀️', '01n': '🌙',
+      '02d': '⛅', '02n': '☁️',
+      '03d': '☁️', '03n': '☁️',
+      '04d': '☁️', '04n': '☁️',
+      '09d': '🌧️', '09n': '🌧️',
+      '10d': '🌦️', '10n': '🌧️',
+      '11d': '⛈️', '11n': '⛈️',
+      '13d': '❄️', '13n': '❄️',
+      '50d': '🌫️', '50n': '🌫️'
+    };
+    return emojiMap[iconCode] || '🌤️';
+  };
+
   if (!items.length) return null;
   return (
     <GlassCard style={{ marginTop: 14 }}>
@@ -12,10 +28,9 @@ export default function ForecastPills({ items = [] }) {
           return (
             <View key={d.date} style={styles.pill}>
               <Text style={styles.day}>{day}</Text>
-              <Image
-                source={{ uri: `https://openweathermap.org/img/wn/${d.icon}.png` }}
-                style={{ width: 28, height: 28, marginVertical: 6 }}
-              />
+              <Text style={{ fontSize: 24, textAlign: 'center', marginVertical: 6 }}>
+                {getWeatherEmoji(d.icon)}
+              </Text>
               <Text style={styles.temp}>{Math.round(d.temp)}°</Text>
             </View>
           );

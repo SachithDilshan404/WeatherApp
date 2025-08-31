@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import GlassCard from "./GlassCard";
 
@@ -10,6 +10,22 @@ export default function CurrentWeatherCard({ city, current }) {
   const temp = Math.round(current.main?.temp ?? 0);
   const hi = Math.round(current.main?.temp_max ?? temp);
   const lo = Math.round(current.main?.temp_min ?? temp);
+
+  // Weather emoji mapping
+  const getWeatherEmoji = (iconCode) => {
+    const emojiMap = {
+      '01d': '☀️', '01n': '🌙',
+      '02d': '⛅', '02n': '☁️',
+      '03d': '☁️', '03n': '☁️',
+      '04d': '☁️', '04n': '☁️',
+      '09d': '🌧️', '09n': '🌧️',
+      '10d': '🌦️', '10n': '🌧️',
+      '11d': '⛈️', '11n': '⛈️',
+      '13d': '❄️', '13n': '❄️',
+      '50d': '🌫️', '50n': '🌫️'
+    };
+    return emojiMap[iconCode] || '🌤️';
+  };
 
   return (
     <LinearGradient
@@ -23,10 +39,9 @@ export default function CurrentWeatherCard({ city, current }) {
 
       <GlassCard style={{ marginTop: 18 }}>
         <View style={styles.rowTop}>
-          <Image
-            source={{ uri: `https://openweathermap.org/img/wn/${icon}@2x.png` }}
-            style={{ width: 68, height: 68 }}
-          />
+          <Text style={{ fontSize: 64, textAlign: 'center', width: 68 }}>
+            {getWeatherEmoji(icon)}
+          </Text>
           <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
             <Text style={styles.temp}>{temp}°</Text>
             <Text style={styles.cond}> {condition}</Text>
