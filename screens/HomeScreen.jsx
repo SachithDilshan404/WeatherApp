@@ -44,7 +44,52 @@ export default function HomeScreen() {
         <HourlyChart items={hourly} />
 
         <View style={styles.grid}>
-          <MetricTile label="Visibility" value={visibility} unit="mi" />
+          <MetricTile
+            label="Visibility"
+            value={visibility}
+            unit="mi"
+            status={visibility === "-" ? "-" : visibility >= 30 ? "Excellent" : visibility >= 15 ? "Good" : visibility >= 8 ? "Moderate" : "Poor"}
+            renderExtra={() => {
+              const visibilityValue = parseFloat(visibility);
+              if (visibility === "-") return null;
+
+              return (
+                <View style={{ alignItems: "center" }}>
+                  {/* Excellent (30+ mi) - Show all 4 bars */}
+                  {visibilityValue >= 30 && (
+                    <>
+                      <View style={[barStyle, { width: 30, backgroundColor: "#b8f5d3" }]} />
+                      <View style={[barStyle, { width: 40, backgroundColor: "#6fddad" }]} />
+                      <View style={[barStyle, { width: 50, backgroundColor: "#34d399" }]} />
+                      <View style={[barStyle, { width: 60, backgroundColor: "#13d189" }]} />
+                    </>
+                  )}
+                  
+                  {/* Good (10-29.9 mi) - Show 3 bars */}
+                  {visibilityValue >= 15 && visibilityValue < 30 && (
+                    <>
+                      <View style={[barStyle, { width: 40, backgroundColor: "#6fddad" }]} />
+                      <View style={[barStyle, { width: 50, backgroundColor: "#34d399" }]} />
+                      <View style={[barStyle, { width: 60, backgroundColor: "#13d189" }]} />
+                    </>
+                  )}
+                  
+                  {/* Moderate (5-9.9 mi) - Show 2 bars */}
+                  {visibilityValue >= 8 && visibilityValue < 10 && (
+                    <>
+                      <View style={[barStyle, { width: 50, backgroundColor: "#34d399" }]} />
+                      <View style={[barStyle, { width: 60, backgroundColor: "#13d189" }]} />
+                    </>
+                  )}
+                  
+                  {/* Poor (less than 5 mi) - Show 1 bar only */}
+                  {visibilityValue < 5 && (
+                    <View style={[barStyle, { width: 60, backgroundColor: "#13d189" }]} />
+                  )}
+                </View>
+              );
+            }}
+          />
           <MetricTile label="Pressure" value={pressure} unit="hPa" />
         </View>
 
@@ -63,3 +108,8 @@ const styles = StyleSheet.create({
   grid: { flexDirection: "row", gap: 12, marginTop: 14 },
   footer: { color: "#a7a2a0", textAlign: "center", marginTop: 18 },
 });
+const barStyle = {
+  height: 6,
+  borderRadius: 4,
+  marginVertical: 2,
+};
