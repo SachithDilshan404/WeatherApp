@@ -35,7 +35,7 @@ export default function HomeScreen() {
         <View style={{ marginTop: 12 }}>
           <SearchBar onSubmit={(q) => q && setCity(q)} />
         </View>
-
+        
         <View style={{ marginTop: 14 }}>
           <CurrentWeatherCard city={city} current={current} />
         </View>
