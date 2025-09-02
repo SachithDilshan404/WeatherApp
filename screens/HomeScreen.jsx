@@ -16,6 +16,7 @@ export default function HomeScreen() {
 
   const visibility = current?.visibility ? (current.visibility / 1609).toFixed(1) : "-";
   const pressure = current?.main?.pressure ?? "-";
+  const humidity = current?.main?.humidity ?? "-";
 
   return (
     <LinearGradient
@@ -48,7 +49,7 @@ export default function HomeScreen() {
             label="Visibility"
             value={visibility}
             unit="mi"
-            status={visibility === "-" ? "-" : visibility >= 30 ? "Excellent" : visibility >= 15 ? "Good" : visibility >= 8 ? "Moderate" : "Poor"}
+            status={visibility === "-" ? "-" : visibility >= 30 ? "Excellent" : visibility >= 10 ? "Good" : visibility >= 5 ? "Moderate" : "Poor"}
             renderExtra={() => {
               const visibilityValue = parseFloat(visibility);
               if (visibility === "-") return null;
@@ -66,7 +67,7 @@ export default function HomeScreen() {
                   )}
                   
                   {/* Good (10-29.9 mi) - Show 3 bars */}
-                  {visibilityValue >= 15 && visibilityValue < 30 && (
+                  {visibilityValue >= 10 && visibilityValue < 30 && (
                     <>
                       <View style={[barStyle, { width: 40, backgroundColor: "#6fddad" }]} />
                       <View style={[barStyle, { width: 50, backgroundColor: "#34d399" }]} />
@@ -75,7 +76,7 @@ export default function HomeScreen() {
                   )}
                   
                   {/* Moderate (5-9.9 mi) - Show 2 bars */}
-                  {visibilityValue >= 8 && visibilityValue < 10 && (
+                  {visibilityValue >= 5 && visibilityValue < 10 && (
                     <>
                       <View style={[barStyle, { width: 50, backgroundColor: "#34d399" }]} />
                       <View style={[barStyle, { width: 60, backgroundColor: "#13d189" }]} />
@@ -91,6 +92,51 @@ export default function HomeScreen() {
             }}
           />
           <MetricTile label="Pressure" value={pressure} unit="hPa" />
+        </View>
+        
+        <View style={styles.grid}>
+          <MetricTile label="Humidity" value={humidity} unit="%" />
+          <MetricTile label="Wind" value={current?.wind?.speed ?? "-"} unit="m/s" />
+        </View>
+
+        <View style={styles.grid}>
+          <MetricTile label="Wind Gust" value={current?.wind?.gust ?? "-"} unit="m/s" />
+          <MetricTile label="Clouds" value={current?.clouds?.all ?? "-"} unit="%" />
+        </View>
+
+        <View style={styles.grid}>
+          <MetricTile label="Wind Direction" value={current?.wind?.deg ?? "-"} unit="°" />
+          <MetricTile label="Feels Like" value={current?.main?.feels_like ?? "-"} unit="°F" />
+        </View>
+
+        <View style={styles.grid}>
+            <MetricTile label="Max Temp" value={current?.main?.temp_max ?? "-"} unit="°F" />
+            <MetricTile label="Min Temp" value={current?.main?.temp_min ?? "-"} unit="°F" />
+        </View>
+
+        <View style={styles.grid}>
+          <MetricTile label="Sunrise" value={current?.sys?.sunrise ? new Date(current.sys.sunrise * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"} unit="" />
+          <MetricTile label="Sunset" value={current?.sys?.sunset ? new Date(current.sys.sunset * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"} unit="" />
+        </View>
+
+        <View style={styles.grid}>
+          <MetricTile 
+            label="Snow Volume" 
+            value={current?.snow?.["1h"] ?? "0"} 
+            unit="mm/h" 
+            status={current?.snow?.["1h"] ? "Active" : "None"}
+          />
+          <MetricTile 
+            label="Rain Volume" 
+            value={current?.rain?.["1h"] ?? "0"} 
+            unit="mm/h" 
+            status={current?.rain?.["1h"] ? "Active" : "None"}
+          />
+        </View>
+
+        <View style={styles.grid}>
+          <MetricTile label="Sea Level" value={current?.main?.sea_level ?? "-"} unit="hPa" />
+          <MetricTile label="Ground Level" value={current?.main?.grnd_level ?? "-"} unit="hPa" />
         </View>
 
         <Text style={styles.footer}>{loading ? "Loading…" : "All data • OpenWeather"}</Text>
