@@ -9,14 +9,40 @@ import ForecastPills from "../components/ForecastPills";
 import HourlyChart from "../components/HourlyChart";
 import MetricTile from "../components/MetricTile";
 import { useTheme } from "../context/ThemeContext";
+import { OfflineStorageManager } from "../utils/offlineStorage";
 
 export default function HomeScreen() {
   const { isDark, setIsDark } = useTheme();
-  const { city, setCity, current, hourly, daily, loading } = useWeather();
+  const { 
+    city, 
+    setCity, 
+    current, 
+    hourly, 
+    daily, 
+    loading, 
+    error, 
+    suggestions, 
+    clearError, 
+    isOnline, 
+    isOfflineMode, 
+    lastUpdated,
+    isAutoRefreshing
+  } = useWeather();
 
   const visibility = current?.visibility ? (current.visibility / 1609).toFixed(1) : "-";
   const pressure = current?.main?.pressure ?? "-";
   const humidity = current?.main?.humidity ?? "-";
+
+  // Format the last updated text based on online/offline status
+  const getLastUpdatedText = () => {
+    if (isOfflineMode && lastUpdated) {
+      return OfflineStorageManager.formatOfflineMessage(lastUpdated);
+    } else if (lastUpdated) {
+      return OfflineStorageManager.formatLastUpdated(lastUpdated);
+    } else {
+      return "Updated a moment ago";
+    }
+  };
 
   return (
     <LinearGradient
@@ -27,14 +53,36 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.hCity}>{city}</Text>
-            <Text style={styles.hSub}>Updated a moment ago</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.hCity}>{city}</Text>
+              {isOfflineMode && (
+                <View style={styles.offlineBadge}>
+                  <Text style={styles.offlineBadgeText}>OFFLINE</Text>
+                </View>
+              )}
+              {isAutoRefreshing && (
+                <View style={styles.refreshingBadge}>
+                  <Text style={styles.refreshingBadgeText}>REFRESHING</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.hSub, isOfflineMode && styles.offlineText]}>
+              {isAutoRefreshing ? "Updating data..." : getLastUpdatedText()}
+            </Text>
           </View>
           <Toggle value={isDark} onChange={setIsDark} />
         </View>
 
         <View style={{ marginTop: 12 }}>
-          <SearchBar onSubmit={(q) => q && setCity(q)} />
+          <SearchBar 
+            onSubmit={(q) => q && setCity(q)} 
+            error={error}
+            suggestions={suggestions}
+            onSuggestionSelect={setCity}
+            onClearError={clearError}
+            disabled={isOfflineMode}
+            offlineMessage={isOfflineMode ? "City search is disabled in offline mode" : null}
+          />
         </View>
         
         <View style={{ marginTop: 14 }}>
@@ -139,7 +187,12 @@ export default function HomeScreen() {
           <MetricTile label="Ground Level" value={current?.main?.grnd_level ?? "-"} unit="hPa" />
         </View>
 
-        <Text style={styles.footer}>{loading ? "Loading…" : "All data • OpenWeather"}</Text>
+        <Text style={styles.footer}>
+          {loading ? "Loading…" : 
+           isAutoRefreshing ? "Auto-refreshing data..." :
+           isOfflineMode ? "Offline Mode • Cached Data" : 
+           "All data • OpenWeather"}
+        </Text>
       </ScrollView>
     </LinearGradient>
   );
@@ -151,6 +204,31 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   hCity: { color: "#fff", fontSize: 26, fontWeight: "900" },
   hSub: { color: "#d0c6bf", opacity: 0.85, marginTop: 2 },
+  offlineText: { color: "#fbbf24", opacity: 1 },
+  offlineBadge: {
+    backgroundColor: "#dc2626",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  offlineBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  refreshingBadge: {
+    backgroundColor: "#059669",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  refreshingBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+  },
   grid: { flexDirection: "row", gap: 12, marginTop: 14 },
   footer: { color: "#a7a2a0", textAlign: "center", marginTop: 18 },
 });

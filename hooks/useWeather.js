@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Location from "expo-location";
-import { fetchCurrent, fetchForecast } from "../utils/api";
+import { fetchCurrent, fetchForecast, InvalidCityError } from "../utils/api";
+import { OfflineStorageManager } from "../utils/offlineStorage";
+import NetInfo from '@react-native-community/netinfo';
 
 // City name corrections for common geocoding vs weather API mismatches
 const correctCityName = (cityName) => {
@@ -23,6 +25,136 @@ export default function useWeather(defaultCity = "Colombo") {
   const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [locationDetermined, setLocationDetermined] = useState(false);
+  const [error, setError] = useState(null); // New state for error handling
+  const [suggestions, setSuggestions] = useState([]); // New state for city suggestions
+  const [isOnline, setIsOnline] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+
+  // Separate function for fetching weather data (for auto-refresh)
+  const fetchWeatherData = async (cityName, isAutoRefresh = false) => {
+    if (!cityName || !isOnline) return;
+    
+    if (isAutoRefresh) {
+      setIsAutoRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    
+    setError(null);
+    setSuggestions([]);
+    
+    try {
+      console.log('Fetching weather data for:', cityName);
+      const [c, f] = await Promise.all([fetchCurrent(cityName), fetchForecast(cityName)]);
+      
+      setCurrent(c);
+      setForecast(f);
+      setError(null);
+      setSuggestions([]);
+      setIsOfflineMode(false);
+      
+      // Save to offline storage
+      await OfflineStorageManager.saveWeatherData(c, f, cityName);
+      setLastUpdated(new Date());
+      
+      console.log('Weather data refreshed successfully');
+    } catch (e) {
+      console.warn("Weather fetch error:", e?.message);
+      
+      if (e instanceof InvalidCityError) {
+        setError(`City "${e.cityName}" not found. Did you mean one of these?`);
+        setSuggestions(e.suggestions);
+      } else {
+        // Network error - try to load offline data
+        console.log('Network error, attempting to load offline data');
+        const offlineData = await OfflineStorageManager.getOfflineWeatherData();
+        if (offlineData) {
+          setCurrent(offlineData.current);
+          setForecast(offlineData.forecast);
+          setLastUpdated(offlineData.lastUpdated);
+          setIsOfflineMode(true);
+          setError("Using offline data. Check your internet connection.");
+        } else {
+          setError("Unable to fetch weather data and no offline data available.");
+        }
+      }
+    } finally {
+      if (isAutoRefresh) {
+        setIsAutoRefreshing(false);
+      } else {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Network connectivity monitoring
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      const online = state.isConnected && state.isInternetReachable;
+      const wasOffline = isOfflineMode;
+      
+      setIsOnline(online);
+      
+      if (!online && !isOfflineMode) {
+        // Going offline
+        setIsOfflineMode(true);
+        console.log('Device went offline, switching to offline mode');
+      } else if (online && isOfflineMode) {
+        // Coming back online - trigger auto refresh
+        console.log('Device came back online, auto-refreshing data');
+        setIsOfflineMode(false);
+        
+        // Auto-refresh weather data when coming back online
+        if (city && locationDetermined) {
+          console.log('Auto-refreshing weather data for:', city);
+          // Trigger a refresh by setting a flag or calling fetch directly
+          setTimeout(() => {
+            // Small delay to ensure connection is stable
+            fetchWeatherData(city, true); // true indicates this is an auto-refresh
+          }, 1000);
+        }
+      }
+    });
+
+    // Initial network state check
+    NetInfo.fetch().then(state => {
+      const online = state.isConnected && state.isInternetReachable;
+      setIsOnline(online);
+      if (!online) {
+        setIsOfflineMode(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isOfflineMode, city, locationDetermined]);
+
+  // Load offline data on app start
+  useEffect(() => {
+    const loadOfflineData = async () => {
+      try {
+        const offlineData = await OfflineStorageManager.getOfflineWeatherData();
+        if (offlineData && (!isOnline || !current)) {
+          console.log('Loading offline weather data');
+          setCurrent(offlineData.current);
+          setForecast(offlineData.forecast);
+          setCity(offlineData.city);
+          setLastUpdated(offlineData.lastUpdated);
+          setLocationDetermined(true);
+          
+          if (!isOnline) {
+            setIsOfflineMode(true);
+            setLoading(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading offline data:', error);
+      }
+    };
+
+    loadOfflineData();
+  }, []);
 
   // get city by GPS (priority), fallback to default city
   useEffect(() => {
@@ -117,21 +249,22 @@ export default function useWeather(defaultCity = "Colombo") {
     // Only fetch weather data after location is determined and city is set
     if (!locationDetermined || !city) return;
     
+    // If offline, don't attempt to fetch new data
+    if (!isOnline && isOfflineMode) {
+      console.log('Offline mode: skipping weather fetch');
+      return;
+    }
+    
     let mounted = true;
-    (async () => {
-      setLoading(true);
-      try {
-        const [c, f] = await Promise.all([fetchCurrent(city), fetchForecast(city)]);
-        if (mounted) { setCurrent(c); setForecast(f); }
-      } catch (e) { 
-        console.warn("Weather fetch error:", e?.message); 
-      }
-      finally { 
-        if (mounted) setLoading(false); 
-      }
-    })();
+    
+    const performFetch = async () => {
+      await fetchWeatherData(city);
+    };
+    
+    performFetch();
+    
     return () => (mounted = false);
-  }, [city, locationDetermined]);
+  }, [city, locationDetermined, isOnline]);
 
   // next 8 three-hour points for "hourly" chart
   const hourly = useMemo(() => (forecast ? forecast.list.slice(0, 8) : []), [forecast]);
@@ -162,5 +295,25 @@ export default function useWeather(defaultCity = "Colombo") {
     setCity(correctedCity);
   };
 
-  return { city, setCity: setCityWithCorrection, current, hourly, daily, loading };
+  // Function to clear error state
+  const clearError = () => {
+    setError(null);
+    setSuggestions([]);
+  };
+
+  return { 
+    city, 
+    setCity: setCityWithCorrection, 
+    current, 
+    hourly, 
+    daily, 
+    loading, 
+    error, 
+    suggestions,
+    clearError,
+    isOnline,
+    isOfflineMode,
+    lastUpdated,
+    isAutoRefreshing
+  };
 }
