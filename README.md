@@ -2,7 +2,7 @@
 
 A modern, feature-rich weather application built with React Native and Expo. Get real-time weather information, forecasts, and enjoy a beautiful glass-morphism UI with dark/light theme support.
 
-<img src="https://raw.githubusercontent.com/SachithDilshan404/Photos-rep/main/previewimg.jpeg" alt="WeatherApp Preview" width="350" />
+<img src="https://raw.githubusercontent.com/SachithDilshan404/Photos-rep/main/previewimg.jpeg" alt="WeatherApp Preview" width="250" />
 
 ## 🌟 Features
 
